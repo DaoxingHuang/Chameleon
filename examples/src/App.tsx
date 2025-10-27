@@ -1,15 +1,18 @@
-import React, { useRef, useState } from "react";
-import { GLPipeline } from "@chameleon/core";
-import { ThreeAdapter } from "@chameleon/adapters";
-import {
-  GLTFLoaderPlugin,
-  ValidatorPlugin,
-  CustomShaderPlugin,
-  VideoTexturePlugin,
-  DeviceStatePlugin
-} from "@chameleon/plugins";
-import { PipelineLogger } from "@chameleon/core";
-import { attachInterceptorToPipeline } from "@chameleon/core";
+import React from "react";
+import { Pipeline, type RenderRequest } from "@chameleon/core";
+import { GalaceanAdapter } from "@chameleon/adapters/src";
+
+
+import { attachLoggerToPipeline } from "@chameleon/core";
+import { PipelineAdapterPlugin, DefCameraControlPlugin, DefGalaceanInteractionPlugin } from "@chameleon/plugins";
+import { EnvironmentSkyboxPlugin } from "./plugins/EnvironmentSkyboxPlugin";
+// import { CameraControlPlugin } from "./plugins/CameraControlPlugin";
+
+import Layout from "./layout";
+import SceneCard from "./components/SceneCard";
+import ReplaceSceneCard from "./components/ReplaceSceneCard";
+
+// import { attachInterceptorToPipeline } from "@chameleon/core";
 
 // expose for devtools
 declare global {
@@ -19,114 +22,86 @@ declare global {
   }
 }
 
-export default function App() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [status, setStatus] = useState("idle");
-  const [ctxRef, setCtxRef] = useState<any>(null);
 
-  const loadDemo = async () => {
-    setStatus("initializing");
-    const adapter = new ThreeAdapter();
-    const pipeline = new GLPipeline(adapter);
+export default function App() {
+  // const [ctxRef, setCtxRef] = useState<any>(null);
+
+  const loadBasicDemo = async (canvas: HTMLCanvasElement) => {
+    const adapter = new GalaceanAdapter();
+    const pipeline = new Pipeline(adapter);
+    attachLoggerToPipeline(pipeline, console);
     // attach plugins
     const plugins = [
-      new GLTFLoaderPlugin(),
-      new ValidatorPlugin(),
-      new CustomShaderPlugin(),
-      new VideoTexturePlugin(),
-      new DeviceStatePlugin()
+      new PipelineAdapterPlugin(),
+      new DefCameraControlPlugin(),
+      // new EnvironmentSkyboxPlugin(),
     ];
     plugins.forEach((p) => pipeline.use(p));
-    // expose plugin list to devtools
-    (window as any).__GLPIPE_PLUGINS__ = plugins.map((p) => ({ name: p.name }));
 
-    const logger = new PipelineLogger();
-    pipeline.setLogger(logger);
-    attachInterceptorToPipeline(pipeline, logger);
-    // expose logger to devtools (devtools app can set this into its store by window global)
-    (window as any).__GLPIPE_LOGGER__ = logger;
-
-    // create request with simple inline glTF-like structure
-    const DEMO_MODEL = {
-      asset: { version: "2.0" },
-      materials: [
-        { name: "baseMat", extras: {} },
-        {
-          name: "screenMat",
-          extras: {
-            "biz:decorate": {
-              type: "video",
-              source: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
-            }
-          }
-        }
-      ],
-      // For demo we rely on buildScene falling back to programmatic geometry if parsed scene absent.
-      nodes: [
-        {
-          name: "base",
-          extras: { materialName: "baseMat", size: { x: 2, y: 0.1, z: 2 }, pos: { x: 0, y: 0.05, z: 0 } }
-        },
-        {
-          name: "screen",
-          extras: { materialName: "screenMat", size: { x: 1.2, y: 0.7, z: 0.05 }, pos: { x: 0, y: 0.8, z: 0 } }
-        }
-      ]
-    };
-
+    const data: RenderRequest = { id: "demo", source: 'https://gw.alipayobjects.com/os/bmw-prod/d6dbf161-48e2-4e6d-bbca-c481ed9f1a2d.gltf' };
+    let ctx = {}
     try {
-      const ctx = await pipeline.run(containerRef.current!, { id: "demo", source: DEMO_MODEL });
-      // attach pipeline ref for dispose
-      (ctx as any).pipelineInstance = pipeline;
-      (window as any).__GLPIPE_CTX__ = ctx;
-      setCtxRef(ctx);
-      setStatus("running");
+      ctx = await pipeline.run(canvas as HTMLCanvasElement, data);
     } catch (e: any) {
-      setStatus("error: " + e.message);
     }
+    return [pipeline, ctx];
   };
 
-  const abort = () => {
-    const ctx = (window as any).__GLPIPE_CTX__;
-    if (ctx && ctx.abortController) {
-      ctx.abortController.abort();
-      setStatus("aborted");
+  const loadGltfandSetEnvDemo = async (canvas: HTMLCanvasElement) => {
+    const adapter = new GalaceanAdapter();
+    const pipeline = new Pipeline(adapter);
+    attachLoggerToPipeline(pipeline, console);
+    // attach plugins
+    const plugins = [
+      new PipelineAdapterPlugin(),
+      new DefCameraControlPlugin(),
+      new EnvironmentSkyboxPlugin(),
+    ];
+    plugins.forEach((p) => pipeline.use(p));
+
+    const data: RenderRequest = { id: "demo", source: 'https://gw.alipayobjects.com/os/bmw-prod/d6dbf161-48e2-4e6d-bbca-c481ed9f1a2d.gltf' };
+    let ctx = {}
+    try {
+      ctx = await pipeline.run(canvas as HTMLCanvasElement, data);
+    } catch (e: any) {
     }
+    return [pipeline, ctx];
   };
 
-  const dispose = async () => {
-    const ctx = (window as any).__GLPIPE_CTX__;
-    if (ctx && ctx.pipeline) {
-      await ctx.pipeline.dispose(ctx);
-      (window as any).__GLPIPE_CTX__ = null;
-      setStatus("disposed");
+
+
+  const loadBasicGltfAndFreeControlDemo = async (canvas: HTMLCanvasElement) => {
+    const adapter = new GalaceanAdapter();
+    const pipeline = new Pipeline(adapter);
+    attachLoggerToPipeline(pipeline, console);
+    // attach plugins
+    const plugins = [
+      new PipelineAdapterPlugin(),
+      new DefCameraControlPlugin(),
+      new DefGalaceanInteractionPlugin()
+    ];
+    plugins.forEach((p) => pipeline.use(p));
+
+    const data: RenderRequest = { id: "demo", source: 'https://mdn.alipayobjects.com/chain_myent/afts/file/G4BCQYX6t4gAAAAAAAAAAAAADvN2AQBr' };
+    let ctx = {}
+    try {
+      ctx = await pipeline.run(canvas as HTMLCanvasElement, data);
+    } catch (e: any) {
     }
+    return [pipeline, ctx];
   };
+
+
 
   return (
-    <div className="w-screen h-screen flex">
-      <div ref={containerRef} style={{ flex: 1, background: "#111" }} />
-      <div style={{ width: 360, background: "#0b0b0b", color: "#ddd", padding: 12 }}>
-        <div className="flex gap-2">
-          <button className="bg-slate-700 px-3 py-1 rounded" onClick={loadDemo}>
-            Load Demo
-          </button>
-          <button className="bg-slate-700 px-3 py-1 rounded" onClick={abort}>
-            Abort
-          </button>
-          <button className="bg-slate-700 px-3 py-1 rounded" onClick={dispose}>
-            Dispose
-          </button>
-        </div>
-        <div className="mt-2">Status: {status}</div>
-        <div className="mt-4">
-          <h4 className="text-sm mb-2">Instructions</h4>
-          <div className="text-xs text-slate-300">
-            Click "Load Demo" to run pipeline. Open DevTools app separately (port 5174) and it will pick up pipeline
-            logger & context exposed on window.
-          </div>
-        </div>
-      </div>
-    </div>
+    <Layout >
+      {/* <SceneCard title="only load gltf modeal" description="use GLTFLoaderPlugin load gltf" onCanvasReady={(loadBasicDemo)} />
+      <SceneCard title="Load GLTF and set evn" description="use GLTFLoaderPlugin load gltf" onCanvasReady={(loadGltfandSetEnvDemo)} />
+      <SceneCard title="Load GLTF and and interaction with model" description="try to load" onCanvasReady={(loadBasicGltfAndFreeControlDemo)} />
+      <ReplaceSceneCard/> */}
+      <ReplaceSceneCard/> 
+
+    </Layout>
   );
+
 }

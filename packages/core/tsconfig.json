@@ -9,7 +9,7 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "experimentalDecorators": true,
-    "declarationDir": "dist",
+    "declarationDir": "./dist",
     "sourceMap": true,
     "baseUrl": "./",
     "emitDeclarationOnly": true,
@@ -27,6 +27,7 @@
     "packages/*/tests"
   ],
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "types/*"
   ]
 }
