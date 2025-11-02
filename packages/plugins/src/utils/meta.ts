@@ -1,14 +1,24 @@
 /**
- * 通用 RenderingContext.metadata 帮助函数
- * - 负责初始化 metadata 结构
- * - 提供锁、cleanup、completed 的常用操作
+ *
+ * Common helpers for RenderingContext.metadata:
+ * - initialize the metadata structure
+ * - provide utilities for stage locks, cleanup registration, and completion flags
  */
 
 export type StageName = string;
 export type StageCleanupFn = (ctx: any) => Promise<void> | void;
 
+// NOTE: keep the original dynamic shape; RenderingContext is expected to exist in the runtime environment.
 type MetadataType = typeof RenderingContext.prototype.metadata;
 
+/**
+ * ensureMetadata
+ * - Ensure ctx.metadata exists and has the common sub-objects:
+ *   - stageLocks: record boolean lock state per stage
+ *   - stageCleanups: array of cleanup functions per stage
+ *   - stagesCompleted: record boolean completed state per stage
+ * - Returns the metadata object for convenience.
+ */
 export function ensureMetadata(ctx: RenderingContext): MetadataType {
   ctx.metadata = ctx.metadata || {};
   ctx.metadata.stageLocks = ctx.metadata.stageLocks || {};
@@ -17,28 +27,50 @@ export function ensureMetadata(ctx: RenderingContext): MetadataType {
   return ctx.metadata;
 }
 
-export function isStageLocked(ctx: any, stage: StageName): boolean {
+/**
+ * isStageLocked
+ * - Return true if the named stage is currently locked on the given context.
+ */
+export function isStageLocked(ctx: RenderingContext, stage: StageName): boolean {
   ensureMetadata(ctx);
   return !!ctx.metadata.stageLocks[stage];
 }
 
-export function lockStage(ctx: any, stage: StageName) {
+/**
+ * lockStage
+ * - Mark the named stage as locked on the context (prevents concurrent execution).
+ */
+export function lockStage(ctx: RenderingContext, stage: StageName) {
   ensureMetadata(ctx);
   ctx.metadata.stageLocks[stage] = true;
 }
 
-export function unlockStage(ctx: any, stage: StageName) {
+/**
+ * unlockStage
+ * - Release the named stage lock on the context.
+ */
+export function unlockStage(ctx: RenderingContext, stage: StageName) {
   ensureMetadata(ctx);
   ctx.metadata.stageLocks[stage] = false;
 }
 
-export function addStageCleanup(ctx: any, stage: StageName, fn: StageCleanupFn) {
+/**
+ * addStageCleanup
+ * - Register a cleanup function to run when the given stage is cleaned up/disposed.
+ * - Cleanup functions are executed with the same ctx parameter.
+ */
+export function addStageCleanup(ctx: RenderingContext, stage: StageName, fn: StageCleanupFn) {
   ensureMetadata(ctx);
   ctx.metadata.stageCleanups[stage] = ctx.metadata.stageCleanups[stage] || [];
   ctx.metadata.stageCleanups[stage].push(fn);
 }
 
-export async function runStageCleanups(ctx: any, stage: StageName) {
+/**
+ * runStageCleanups
+ * - Execute all cleanup functions registered for the named stage.
+ * - Each cleanup is awaited; errors in individual cleanups are caught and logged.
+ */
+export async function runStageCleanups(ctx: RenderingContext, stage: StageName) {
   const list: StageCleanupFn[] = (ctx.metadata?.stageCleanups?.[stage]) || [];
   for (const fn of list) {
     try {
@@ -49,92 +81,20 @@ export async function runStageCleanups(ctx: any, stage: StageName) {
   }
 }
 
-export function markStageCompleted(ctx: any, stage: StageName, completed = true) {
+/**
+ * markStageCompleted
+ * - Set a boolean marker indicating whether the stage has completed.
+ */
+export function markStageCompleted(ctx: RenderingContext, stage: StageName, completed = true) {
   ensureMetadata(ctx);
   ctx.metadata.stagesCompleted[stage] = completed;
 }
 
-export function clearStageCleanups(ctx: any, stage: StageName) {
+/**
+ * clearStageCleanups
+ * - Clear registered cleanup functions for the named stage.
+ */
+export function clearStageCleanups(ctx: RenderingContext, stage: StageName) {
   ensureMetadata(ctx);
   ctx.metadata.stageCleanups[stage] = [];
 }
-
-/**
- * import { addStageCleanup, isStageLocked, lockStage, unlockStage, markStageCompleted } from "@chameleon/core/src/utils/metadata";
-// ...existing code...
-
-    // 4) Build scene using adapter.buildScene if provided. Otherwise no-op.
-    pipeline.hooks.buildScene.tapPromise(this.name, async (ctx: RenderingContext) => {
--      if (ctx.abortSignal?.aborted) throw new Error("buildScene aborted");
--      ctx.metadata = ctx.metadata || {};
--      ctx.metadata.stageLocks = ctx.metadata.stageLocks || {};
--      if (ctx.metadata.stageLocks["buildScene"]) return ctx;
--      ctx.metadata.stageLocks["buildScene"] = true;
--      try {
--        if (typeof ctx.adapter.buildScene === "function") {
--          await ctx.adapter.buildScene(ctx.parsedGLTF, ctx);
--        }
--      } catch (err) {
--        try { pipeline.logger?.error?.("PipelineAdapterPlugin:buildScene error", err); } catch { }
--        throw err;
--      }
--      // register cleanup: let adapter tear down built scene if it provides a hook,
--      // else provide a conservative default cleanup that clears parsedGLTF.
--      ctx.metadata.stageCleanups = ctx.metadata.stageCleanups || {};
--      ctx.metadata.stageCleanups["buildScene"] = ctx.metadata.stageCleanups["buildScene"] || [];
--      ctx.metadata.stageCleanups["buildScene"].push(async (c: RenderingContext) => {
--        try {
--          // if (typeof c.adapter.dispose === "function") {
--          //   // await c.adapter.dispose();
--          // } else {
--            // fallback: if parsedGLTF contains a targetEngineEntity, try to dispose it if possible
--            const target = (c?.parsedGLTF?.targetEngineEntity) || null;
--            //dx - todo: improve generic disposal strategy based on engine/entity types
--            try {
--              if (target && typeof (target as any).destroy === "function"){
--                target.destroy();
--                ctx.pipeline?.logger?.info?.("PipelineAdapterPlugin: disposed targetEngineEntity during buildScene cleanup");
--              }
--            } catch { }
--          // }
--        } catch { }
--      });
--
--      ctx.metadata.stagesCompleted = ctx.metadata.stagesCompleted || {};
--      ctx.metadata.stagesCompleted["buildScene"] = false;
--      ctx.metadata.stageLocks["buildScene"] = false;
--
--      return ctx;
-+      if (ctx.abortSignal?.aborted) throw new Error("buildScene aborted");
-+
-+      // 如果已经被锁定，直接跳过
-+      if (isStageLocked(ctx, "buildScene")) return ctx;
-+      lockStage(ctx, "buildScene");
-+
-+      try {
-+        if (typeof ctx.adapter.buildScene === "function") {
-+          await ctx.adapter.buildScene(ctx.parsedGLTF, ctx);
-+        }
-+      } catch (err) {
-+        try { pipeline.logger?.error?.("PipelineAdapterPlugin:buildScene error", err); } catch { }
-+        throw err;
-+      }
-+
-+      // 注册清理逻辑（可被通用 runner 调用）
-+      addStageCleanup(ctx, "buildScene", async (c: RenderingContext) => {
-+        try {
-+          const target = (c?.parsedGLTF?.targetEngineEntity) || null;
-+          try {
-+            if (target && typeof (target as any).destroy === "function") {
-+              target.destroy();
-+              ctx.pipeline?.logger?.info?.("PipelineAdapterPlugin: disposed targetEngineEntity during buildScene cleanup");
-+            }
-+          } catch {}
-+        } catch {}
-+      });
-+
-+      markStageCompleted(ctx, "buildScene", false);
-+      unlockStage(ctx, "buildScene");
-+      return ctx;
-     });
- */
