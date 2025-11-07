@@ -1,4 +1,4 @@
-import { AsyncSeriesHook, AsyncSeriesWaterfallHook, AsyncSeriesBailHook, AsyncParallelHook, SyncHook, Hook } from "tapable";
+import { AsyncSeriesHook, AsyncSeriesWaterfallHook, AsyncSeriesBailHook, AsyncParallelHook, SyncHook, AnyHook } from "tapable";
 import type { RenderingContext, RenderRequest } from "./RenderingContext";
 import { Logger } from "./Logger";
 import { EngineAdapter } from "./EngineAdapter";
@@ -16,7 +16,7 @@ import { IPlugin } from "./Plugin";
  */
 export type StageHooks = {
   // Initialize the rendering engine
-  initEngine: AsyncSeriesHook<[RenderingContext]>;
+  initEngine: AsyncSeriesWaterfallHook<[RenderingContext], RenderingContext | undefined>;
   // Load resources (e.g., models, textures)
   resourceLoad: AsyncSeriesWaterfallHook<[RenderingContext]>;
   // Parse and validate loaded resources
@@ -56,7 +56,7 @@ export class Pipeline<TEngine = any, TScene = any, TCamera = any, TOptions = any
 
     // instantiate hooks with argument names to improve debugging/stack traces
     this.hooks = {
-      initEngine: new AsyncSeriesHook<[RenderingContext]>(["ctx"]),
+  initEngine: new AsyncSeriesWaterfallHook<[RenderingContext], RenderingContext | undefined>(["ctx"]),
       resourceLoad: new AsyncSeriesWaterfallHook<[RenderingContext]>(["ctx"]),
       resourceParse: new AsyncSeriesBailHook<[RenderingContext], any>(["ctx"]),
       buildScene: new AsyncSeriesWaterfallHook<[RenderingContext]>(["ctx"]),
@@ -77,7 +77,7 @@ export class Pipeline<TEngine = any, TScene = any, TCamera = any, TOptions = any
   }
 
     // helper: remove taps with the given pluginName from a single hook, return whether removed any
-  private _removeTapsFromHook(hook: AnyStageHook | Hook, pluginName: string): boolean {
+  private _removeTapsFromHook(hook: AnyHook, pluginName: string): boolean {
     if (!hook || !Array.isArray(hook.taps)) return false;
     const before = hook.taps.length;
     // keep taps except those from pluginName
