@@ -4,7 +4,6 @@
  * @namespace Ant
  * @see {@link https://github.com/KhronosGroup/glTF?tab=readme-ov-file erview=1#glTF-2--0-specification} for more details.
  */
-// declare namespace Ant {
 /**
  * Represents the root GLTF asset structure.
  * Contains references to all major components of a GLTF file.
@@ -246,4 +245,3 @@ export interface AnimationSampler {
   output: number;
   interpolation?: string;
 }
-// }
