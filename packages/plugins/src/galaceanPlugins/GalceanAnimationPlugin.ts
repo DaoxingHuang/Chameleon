@@ -1,4 +1,4 @@
-import type { IPlugin, Pipeline, RenderingContext } from "@chameleon/core";
+import { MODEL_CLICKED, offEvent, onEvent, type IPlugin, type Pipeline, type RenderingContext } from "@chameleon/core";
 import {
   Animator,
   AnimatorLayerBlendingMode,
@@ -115,25 +115,18 @@ export class GalceanAnimationPlugin implements IPlugin {
     animator: Animator,
     clickState: AnimatorState
   ): () => void {
-    const bus = ctx?.eventBus;
-    if (!bus) {
-      pipeline.logger?.info?.("GalceanAnimationPlugin: no eventBus available on ctx; skipping click handler");
-    }
     const handler = () => {
       try {
-        // Prefer to broadcast the click event so other plugins can react.
-        try {
-          animator.play(clickState.name);
-        } catch (err) {
-          pipeline.logger?.warn?.("GalceanAnimationPlugin: click handler play error", err);
-        }
+        animator.play(clickState.name);
       } catch (err) {
-        pipeline.logger?.warn?.("GalceanAnimationPlugin: click handler error", err);
+        pipeline.logger?.warn?.("GalceanAnimationPlugin: click handler play error", err);
       }
     };
-    bus.off("model:clicked", handler);
-    bus.on("model:clicked", handler);
-    const remove = () => bus?.off("model:clicked", handler);
+
+    // ensure no duplicate handler
+    offEvent(ctx, MODEL_CLICKED, handler);
+    onEvent(ctx, MODEL_CLICKED, handler);
+    const remove = () => offEvent(ctx, MODEL_CLICKED, handler);
     return remove;
   }
 
