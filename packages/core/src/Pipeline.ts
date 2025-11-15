@@ -7,7 +7,7 @@ import {
   SyncHook
 } from "tapable";
 import { EngineAdapter } from "./EngineAdapter";
-import { EventBus } from "./EventBus";
+import EventBus from "./EventBus";
 import { Logger } from "./Logger";
 import { IPlugin } from "./Plugin";
 import type { RenderingContext, RenderRequest } from "./RenderingContext";

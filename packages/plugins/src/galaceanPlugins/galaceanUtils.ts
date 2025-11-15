@@ -1,5 +1,5 @@
 import type { RenderingContext } from "@chameleon/core";
-import { BoundingBox, Entity, MeshRenderer, Scene, Vector3, WebGLEngine } from "@galacean/engine";
+import { BoundingBox, Entity, MeshRenderer, Vector3 } from "@galacean/engine";
 
 /**
  * computeModelBoundingSphere
@@ -63,7 +63,7 @@ export function computeModelBoundingSphere(modelEntity: Entity): { center: Vecto
  * Extract the parsed model root entity from ctx.parsedGLTF.targetEngineEntity.
  * Throws if the parsed entity is missing to preserve existing pipeline expectations.
  */
-export function getParsedEntity(ctx: RenderingContext<WebGLEngine, Scene, Entity>): Entity {
+export function getParsedEntity(ctx: RenderingContext): Entity {
   const parsed = ctx.parsedGLTF?.targetEngineEntity as Entity | undefined;
   if (!parsed) {
     throw new Error("DefGalaceanInteractionPlugin: parsed model entity not found on ctx.parsedGLTF");

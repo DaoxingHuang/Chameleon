@@ -1,4 +1,4 @@
-import type { IPlugin, Pipeline, RenderingContext } from "@chameleon/core";
+import { emitEvent, MODEL_CLICKED, type IPlugin, type Pipeline, type RenderingContext } from "@chameleon/core";
 import { PointerButton, PointerPhase, Script, type Entity, type Scene, type WebGLEngine } from "@galacean/engine";
 import { FramebufferPicker } from "@galacean/engine-toolkit";
 import { addStageCleanup } from "../utils";
@@ -110,7 +110,7 @@ export class GalaceanModelClickPlugin implements IPlugin {
                     timestamp: Date.now(),
                     targetEntity: pickedEntity
                   };
-                  void bus.emit("model:clicked", payload);
+                  emitEvent(ctx, MODEL_CLICKED, payload);
                 }
               });
               // this.isSingleClick = false;

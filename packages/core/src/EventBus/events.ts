@@ -13,6 +13,6 @@ export interface ModelClickedPayload {
   targetEntity?: any;
 }
 
-export type PipelineEvent = typeof MODEL_CLICKED;
+export type PipelineClickEvent = typeof MODEL_CLICKED;
 
 export default MODEL_CLICKED;

@@ -1,5 +1,6 @@
 export * from "./EngineAdapter";
-export * from "./events";
+export * from "./EventBus/events";
+export * from "./EventBus/helpers";
 export * from "./GLTF";
 export * from "./HookInterceptor";
 export * from "./Logger";
